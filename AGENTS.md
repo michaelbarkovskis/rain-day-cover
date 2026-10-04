@@ -72,16 +72,27 @@ NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= SUPABASE_SERVICE_ROLE_K
 ANTHROPIC_API_KEY= CRON_SECRET=
 ```
 
+## Decisions so far
+
+- **Pilot market: Surrey roofers.** Engine prices any UK postcode (demo: Manchester costs ~55% more).
+- **Flat monthly price** from 10 years of Open-Meteo history. Don't price per calendar month (too noisy, and risk is fairly flat year-round).
+- **No excess days.** With 1–3 qualifying days/month an excess wipes out most payouts.
+- **Trigger is set by user research.** Price is very sensitive to it: >=3h of >=0.5mm/h ≈ £113/mo, >=2h of drizzle ≈ £299/mo (pays nearly every month). Working default: >=3h of >=0.5mm, £60/day, cap 4.
+- **No model training.** Prompts + structured output + few-shot examples + a small eval set (`evals/`).
+- Personal accounts only for GitHub, Vercel, Supabase. Never the work accounts on this machine.
+
 ## Plan
 
 | Week | Dates | Done means |
 |---|---|---|
-| 1 | 3–11 Oct | Repo + MIT. Sandbox: create plan, subscribe, receive webhook, send £60 payout. Open-Meteo archive call for one postcode. **Payouts working is the go/no-go.** |
-| 2 | 12–18 Oct | Schema, onboarding, policy builder, pricing + explanation, quote screen |
-| 3 | 19–25 Oct | Subscribe flow, webhooks, daily cron, trigger engine, simulate-weather panel |
-| 4 | 26 Oct–1 Nov | Claims judge + `send_payout`, underwriter dashboard (AG Grid), risk alerts |
-| 5 | 2–8 Nov | Design pass, deploy, README with sandbox logins, Devpost text |
-| 6 | 9–11 Nov | Video, checklist, submit |
+| 1 | 3–11 Oct | ✅ Scaffold, MIT, PayPal go/no-go (sub ACTIVE, payouts SUCCESS), rain analysis. Left: public GitHub repo, Vercel skeleton deploy + webhook test, 6 Oct webinar, message Surrey roofers |
+| 2 | 12–18 Oct | Local Supabase, onboarding (postcode → geocode), policy builder + evals, quote screen with AI explanation. **Lock trigger from research by 15 Oct** |
+| 3 | 19–25 Oct | Subscribe flow, webhooks update DB, daily cron, simulate-weather panel, home screen |
+| 4 | 26 Oct–1 Nov | Claims judge + `send_payout`, claims history, AG Grid underwriter dashboard, risk manager alerts |
+| 5 | 2–8 Nov | Design pass, production deploy (personal Supabase + Vercel), keep-alive, README, Devpost text |
+| 6 | 9–11 Nov | Video, checklist audit, submit 11 Nov |
+
+Cut order if behind: risk manager → Agent Toolkit reporting → claims history polish. Never cut: subscribe → simulate rain → AI judge → payout lands.
 
 ## Subagents (`.claude/agents/`)
 
