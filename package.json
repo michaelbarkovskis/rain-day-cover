@@ -10,7 +10,8 @@
     "sandbox:check": "node --env-file=.env.local scripts/sandbox-check.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test lib/*.test.ts",
-    "rain": "node scripts/rain-analysis.ts"
+    "rain": "node scripts/rain-analysis.ts",
+    "webhook:register": "node --env-file=.env.local scripts/register-webhook.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

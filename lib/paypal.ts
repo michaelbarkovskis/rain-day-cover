@@ -93,3 +93,14 @@ export async function verifyWebhook(headers: Headers, event: unknown): Promise<b
   });
   return res.verification_status === "SUCCESS";
 }
+
+export const WEBHOOK_EVENTS = [
+  "BILLING.SUBSCRIPTION.ACTIVATED", "BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.SUSPENDED",
+  "BILLING.SUBSCRIPTION.PAYMENT.FAILED", "PAYMENT.SALE.COMPLETED",
+  "PAYMENT.PAYOUTS-ITEM.SUCCEEDED", "PAYMENT.PAYOUTS-ITEM.FAILED", "PAYMENT.PAYOUTS-ITEM.UNCLAIMED",
+];
+
+export async function createWebhook(url: string): Promise<string> {
+  const hook = await call("POST", "/v1/notifications/webhooks", { url, event_types: WEBHOOK_EVENTS.map((name) => ({ name })) });
+  return hook.id;
+}
