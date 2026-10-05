@@ -20,7 +20,7 @@ export default async function Describe() {
         <p className="text-muted">Describe it like you’d tell a mate. Our assistant turns it into your cover rules, and you’ll see exactly what it understood.</p>
       </div>
       <div className="card">
-        <ActionForm action={buildPolicy} submit="Build my cover" pending="Checking 10 years of rain where you work…">
+        <ActionForm action={buildPolicy} submit="Build my cover" pending="Checking 15 years of measured rain near you…">
           <div>
             <label className="label" htmlFor="description">Your words</label>
             <textarea className="field min-h-36" id="description" name="description" maxLength={1000} required placeholder={EXAMPLES[0]} />

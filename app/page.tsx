@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const steps = [
   ["Tell us about your work", "Your postcode, your hours, and in your own words, what kind of rain stops you."],
-  ["Get a price from 10 years of local rain", "We check a decade of hourly weather where you work and explain the odds in plain English."],
+  ["Get a price from 15 years of measured local rain", "We check 15 years of official rain gauge readings near you and explain the odds in plain English."],
   ["Get paid when rain stops work", "No claim forms. If the rain trigger is met on a working day, the money lands in your PayPal that day."],
 ];
 
