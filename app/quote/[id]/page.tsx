@@ -34,6 +34,7 @@ export default async function QuotePage({ params }: PageProps<"/quote/[id]">) {
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div><dt className="text-muted">A day counts when</dt><dd className="font-medium">{t.minWetHours}+ hours of {WET[t.wetHourMm]}</dd></div>
           <div><dt className="text-muted">During</dt><dd className="font-medium">{hh(t.startHour)}–{hh(t.endHour)}, {t.workDays.map((d) => DAY[d]).join(" ")}</dd></div>
+          {q.triggerGauge && <div className="col-span-2"><dt className="text-muted">Measured by</dt><dd className="font-medium">Environment Agency rain gauge, {q.triggerGauge.label}, {q.triggerGauge.km}km from you, checked every 15 minutes</dd></div>}
         </dl>
         {q.assumptions?.length > 0 && (
           <div className="rounded-lg bg-background p-3 text-sm">

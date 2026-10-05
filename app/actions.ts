@@ -5,6 +5,7 @@ import { z } from "zod";
 import { admin, currentUser, userClient } from "@/lib/supabase";
 import { geocode } from "@/lib/weather";
 import { pricingHistory } from "@/lib/gauges";
+import { liveGaugesNear } from "@/lib/live";
 import { evaluateAll } from "@/lib/trigger";
 import { price, DEFAULT_PLAN } from "@/lib/pricing";
 import { parseWork, toTrigger } from "@/lib/ai/policy-builder";
@@ -71,8 +72,11 @@ export async function buildPolicy(_: FormState, form: FormData): Promise<FormSta
     endHour: Number(profile.work_end.slice(0, 2)),
     workDays: profile.work_days,
   });
-  let rain;
-  try { rain = await pricingHistory(profile.lat, profile.lng); } catch (e) {
+  let rain, triggerGauge;
+  try {
+    // The nearest live gauge decides payouts; pinned now so the roofer knows which one.
+    [rain, triggerGauge] = await Promise.all([pricingHistory(profile.lat, profile.lng), liveGaugesNear(profile.lat, profile.lng).then((g) => g[0] ?? null)]);
+  } catch (e) {
     console.error(e);
     return { error: "We don't have enough rain gauge history near you yet. We're starting in Surrey." };
   }
@@ -86,7 +90,7 @@ export async function buildPolicy(_: FormState, form: FormData): Promise<FormSta
     user_id: user.id, description, trigger_json: trigger,
     payout_amount: DEFAULT_PLAN.payout, max_days_per_month: DEFAULT_PLAN.capDays, excess_days: q.excessDays,
     monthly_premium: q.monthlyPremium, status: "draft",
-    quote_json: { ...q, gauge, district: place.district, summary: parsed.summary, assumptions: parsed.assumptions, explanation: explanation.text },
+    quote_json: { ...q, gauge, triggerGauge, district: place.district, summary: parsed.summary, assumptions: parsed.assumptions, explanation: explanation.text },
   }).select("id").single();
   if (error || !policy) return { error: "Couldn't save your quote, please try again" };
 
