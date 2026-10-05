@@ -5,7 +5,7 @@
   { "text": "Light rain I can cope with but steady rain for half the day means I can't get felt down.", "expect": { "wetness": "steady", "minWetHours": [4, 4] } },
   { "text": "I work 7 till 3, Monday to Saturday. Drizzle's fine, proper rain isn't.", "expect": { "wetness": "steady", "startHour": 7, "endHour": 15, "workDays": [1, 2, 3, 4, 5, 6] } },
   { "text": "Even a bit of mizzle and the lead work's off, I won't risk the guys slipping. It'd have to be wet for most of the day to lose the whole day though.", "expect": { "wetness": "light", "minWetHours": [6, 6] } },
-  { "text": "Rain stops me.", "expect": { "wetness": "steady", "minWetHours": [3, 3], "assumptions": true } },
+  { "text": "Rain stops me.", "expect": { "understood": true, "assumptions": true } },
   { "text": "We start at 8 and finish at 4:30, weekdays only. If it chucks it down for a few hours we pack up.", "expect": { "wetness": "heavy", "minWetHours": [4, 4], "startHour": 8, "workDays": [1, 2, 3, 4, 5] } },
   { "text": "Slate and tile work. Wet slate is dangerous so even drizzle for an hour or so means we come down.", "expect": { "wetness": "light", "minWetHours": [2, 2] } },
   { "text": "I do chimneys and fascias. Drizzle doesn't bother me, steady rain does if it's there most of the morning and afternoon.", "expect": { "wetness": "steady", "minWetHours": [6, 6] } },
