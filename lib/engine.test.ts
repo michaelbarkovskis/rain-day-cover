@@ -8,9 +8,9 @@ const day = (date: string, wet: number[]) =>
   Array.from({ length: 24 }, (_, h): Hour => ({ time: `${date}T${String(h).padStart(2, "0")}:00`, mm: wet.includes(h) ? 1 : 0 }));
 
 test("trigger counts only wet hours inside the work window", () => {
-  // 2026-10-05 is a Monday. Rain at 7am and 4pm is outside 8–16.
-  assert.equal(evaluateDay("2026-10-05", day("2026-10-05", [7, 9, 16]), t)?.met, false);
-  assert.equal(evaluateDay("2026-10-05", day("2026-10-05", [9, 10]), t)?.met, true);
+  // 2026-10-05 is a Monday. Labels are hour-ending: 08 = 07–08 and 17 = 16–17, both outside 08:00–16:00.
+  assert.equal(evaluateDay("2026-10-05", day("2026-10-05", [8, 17, 10]), t)?.met, false);
+  assert.equal(evaluateDay("2026-10-05", day("2026-10-05", [9, 16]), t)?.met, true); // first and last working hours
   assert.equal(evaluateDay("2026-10-05", day("2026-10-05", [9]), t)?.borderline, true);
   assert.equal(evaluateDay("2026-10-04", day("2026-10-04", [9, 10]), t), null); // Sunday
 });

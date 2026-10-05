@@ -8,7 +8,8 @@ export type Trigger = {
   workDays: number[];  // ISO weekday, 1 = Monday
 };
 
-export type Hour = { time: string; mm: number }; // time = local "YYYY-MM-DDTHH:mm"
+// time = local "YYYY-MM-DDTHH:mm" labelling the END of the hour (Open-Meteo convention: 09:00 = rain 08:00–09:00).
+export type Hour = { time: string; mm: number };
 
 export type DayResult = { date: string; met: boolean; borderline: boolean; wetHours: number; totalMm: number };
 
@@ -18,8 +19,8 @@ export const isoWeekday = (date: string) => ((new Date(`${date}T12:00:00Z`).getU
 export function evaluateDay(date: string, hours: Hour[], t: Trigger): DayResult | null {
   if (!t.workDays.includes(isoWeekday(date))) return null;
   const work = hours.filter((h) => {
-    const hr = Number(h.time.slice(11, 13));
-    return h.time.startsWith(date) && hr >= t.startHour && hr < t.endHour;
+    const hr = Number(h.time.slice(11, 13)); // hour-ending label, so 08:00–16:00 is labels 09..16
+    return h.time.startsWith(date) && hr > t.startHour && hr <= t.endHour;
   });
   const wetHours = work.filter((h) => h.mm >= t.wetHourMm).length;
   const totalMm = Math.round(work.reduce((s, h) => s + h.mm, 0) * 10) / 10;

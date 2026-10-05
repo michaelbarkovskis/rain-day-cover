@@ -12,7 +12,8 @@
     "test": "node --test lib/*.test.ts",
     "rain": "node scripts/rain-analysis.ts",
     "webhook:register": "node --env-file=.env.local scripts/register-webhook.ts",
-    "eval": "node --env-file=.env.local scripts/eval-policy-builder.ts"
+    "eval": "node --env-file=.env.local scripts/eval-policy-builder.ts",
+    "compare": "node scripts/compare-sources.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
