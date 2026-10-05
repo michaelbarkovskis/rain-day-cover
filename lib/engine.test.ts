@@ -34,6 +34,8 @@ test("premium = expected + uncertainty + risk + expenses", () => {
   assert.equal(b.expected, 60);
   assert.ok(b.uncertainty > 0 && b.risk > 0);
   assert.equal(q.monthlyPremium, Math.round((b.expected + b.uncertainty + b.risk + b.expenses) * 100) / 100);
+  const loaded = quoteWithExcess(history([0, 2, 0, 2]), { payout: 60, capDays: 4 }, 0, 1.2);
+  assert.equal(loaded.monthlyPremium, Math.round(q.monthlyPremium * 1.2 * 100) / 100); // busy-area loading multiplies the whole price
 });
 
 test("auto-excess only kicks in when cover would be poor value", () => {

@@ -6,6 +6,7 @@ import { createSubscription } from "@/lib/paypal";
 import { checkPolicyDay, type PolicyForCheck } from "@/lib/checks";
 import { processDay, CLAIM_POLICY_COLUMNS, type ClaimPolicy } from "@/lib/claims";
 import { simulatedHours } from "@/lib/simulate";
+import { capacityFor } from "@/lib/risk";
 import { z } from "zod";
 import { admin, currentUser, userClient } from "@/lib/supabase";
 import { geocode } from "@/lib/weather";
@@ -85,7 +86,10 @@ export async function buildPolicy(_: FormState, form: FormData): Promise<FormSta
     console.error(e);
     return { error: "We don't have enough rain gauge history near you yet. We're starting in Surrey." };
   }
-  const q = price(evaluateAll(rain.hours, trigger), DEFAULT_PLAN);
+  // Risk limits (code): refuse if this gauge or the whole pool is full; otherwise apply the risk manager's bounded loading.
+  const capacity = await capacityFor(triggerGauge?.ref ?? null, DEFAULT_PLAN.payout, DEFAULT_PLAN.capDays);
+  if (!capacity.ok) return { error: capacity.full === "gauge" ? "We're full near you for now: too many roofers share your rain gauge, and one wet day would pay them all at once. Please try again soon." : "We're not taking new cover right now while our pool catches up. Please try again soon." };
+  const q = price(evaluateAll(rain.hours, trigger), DEFAULT_PLAN, capacity.loading);
   if (!q) return { error: "Rain stops work so often where you are that we can't offer cover that's fair value. Try describing heavier rain." };
   const place = await geocode(profile.postcode).catch(() => ({ district: profile.postcode }));
   const gauge = { label: rain.gauge.label, km: rain.gauge.km, years: rain.years, months: rain.months };
@@ -95,7 +99,7 @@ export async function buildPolicy(_: FormState, form: FormData): Promise<FormSta
     user_id: user.id, description, trigger_json: trigger,
     payout_amount: DEFAULT_PLAN.payout, max_days_per_month: DEFAULT_PLAN.capDays, excess_days: q.excessDays,
     monthly_premium: q.monthlyPremium, status: "draft",
-    quote_json: { ...q, gauge, triggerGauge, district: place.district, summary: parsed.summary, assumptions: parsed.assumptions, explanation: explanation.text },
+    quote_json: { ...q, gauge, triggerGauge, risk: { loading: capacity.loading, reason: capacity.loadingReason, utilisation: capacity.utilisation }, district: place.district, summary: parsed.summary, assumptions: parsed.assumptions, explanation: explanation.text },
   }).select("id").single();
   if (error || !policy) return { error: "Couldn't save your quote, please try again" };
 
@@ -117,6 +121,10 @@ export async function subscribe(policyId: string) {
   const policy = await getPolicy(policyId); // RLS: only the owner gets a row
   if (!policy) redirect("/start");
   if (policy.status !== "draft" && policy.status !== "pending") redirect(`/policy/${policyId}`);
+  if (policy.status === "draft") {
+    const capacity = await capacityFor(policy.quote_json?.triggerGauge?.ref ?? null, Number(policy.payout_amount), policy.max_days_per_month);
+    if (!capacity.ok) redirect(`/quote/${policyId}?full=1`); // area filled up since the quote
+  }
   const origin = (await headers()).get("origin");
   if (!origin) throw new Error("Missing origin header");
   const sub = await createSubscription(process.env.PAYPAL_PLAN_ID!, Number(policy.monthly_premium), `${origin}/policy/${policyId}`, `${origin}/quote/${policyId}?cancelled=1`, policyId);

@@ -11,7 +11,7 @@ const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
 
 export default async function QuotePage({ params, searchParams }: PageProps<"/quote/[id]">) {
   const { id } = await params;
-  const { cancelled } = await searchParams;
+  const { cancelled, full } = await searchParams;
   const policy = await getPolicy(id);
   if (!policy) notFound();
   const t = policy.trigger_json as Trigger;
@@ -84,6 +84,7 @@ export default async function QuotePage({ params, searchParams }: PageProps<"/qu
             <Line label="History buffer" note={`${q.months} months of records can't show every possible year`} value={q.breakdown.uncertainty} />
             <Line label="Wet-run buffer" note="so the pool can pay everyone in a run of wet months" value={q.breakdown.risk} />
             <Line label="Running costs" note="payments, data and support" value={q.breakdown.expenses} />
+            {q.breakdown.loading > 0 && <Line label="Busy-area loading" note={q.risk?.reason ?? "many roofers share your rain gauge, so one wet day pays them all"} value={q.breakdown.loading} />}
             <div className="flex justify-between border-t border-border pt-2 font-semibold"><dt>Your monthly price</dt><dd>£{Number(policy.monthly_premium).toFixed(2)}</dd></div>
           </dl>
           {excess > 0 && (
@@ -96,6 +97,7 @@ export default async function QuotePage({ params, searchParams }: PageProps<"/qu
 
       <div className="space-y-2">
         {cancelled && <p role="alert" className="text-sm text-danger">You didn&rsquo;t finish subscribing on PayPal. Your quote is still here.</p>}
+        {full && <p role="alert" className="text-sm text-danger">Sorry, cover near your rain gauge filled up since this quote. Please try again soon.</p>}
         {policy.status === "draft" || policy.status === "pending" ? (
           <form action={subscribe.bind(null, policy.id)}>
             <SubmitButton pending="Opening PayPal…">Subscribe with PayPal · £{Number(policy.monthly_premium).toFixed(2)}/month</SubmitButton>

@@ -22,3 +22,10 @@ export async function unlockUnderwriter(_: FormState, form: FormData): Promise<F
   (await cookies()).set(COOKIE, real.toString("hex"), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 30, path: "/underwriter" });
   redirect("/underwriter");
 }
+
+export async function runRiskReviewNow() {
+  if (!(await isUnderwriter())) redirect("/underwriter");
+  const { runRiskReview } = await import("@/lib/ai/risk-manager");
+  await runRiskReview();
+  redirect("/underwriter");
+}

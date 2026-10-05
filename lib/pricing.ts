@@ -24,7 +24,7 @@ export type Quote = {
   oneInTenPayout: number;         // £ paid in a 1-in-10 wet month
   maxedOutShare: number;          // share of months that hit the cap
   aheadShare: number;             // share of months the payout beat the premium
-  breakdown: { expected: number; uncertainty: number; risk: number; expenses: number };
+  breakdown: { expected: number; uncertainty: number; risk: number; expenses: number; loading: number };
   monthlyPremium: number;
 };
 
@@ -39,14 +39,16 @@ function monthlyCounts(days: DayResult[]) {
   return [...months].map(([m, q]) => ({ cal: Number(m.slice(5, 7)) - 1, q }));
 }
 
-export function quoteWithExcess(days: DayResult[], p: Plan, excessDays: number): Quote {
+// loading: busy-area multiplier from the risk manager, already clamped by lib/risk.ts.
+export function quoteWithExcess(days: DayResult[], p: Plan, excessDays: number, loading = 1): Quote {
   const rows = monthlyCounts(days).map((r) => ({ ...r, paid: Math.min(Math.max(r.q - excessDays, 0), p.capDays) }));
   const pay = rows.map((r) => r.paid * p.payout);
   const expected = avg(pay), swing = sd(pay);
   const uncertainty = (LOADS.uncertainty * swing) / Math.sqrt(rows.length || 1);
   const risk = LOADS.risk * swing;
   const expenses = (expected + uncertainty + risk) * LOADS.expenses;
-  const monthlyPremium = r2(expected + uncertainty + risk + expenses);
+  const base = expected + uncertainty + risk + expenses;
+  const monthlyPremium = r2(base * loading);
   return {
     excessDays,
     months: rows.length,
@@ -58,17 +60,17 @@ export function quoteWithExcess(days: DayResult[], p: Plan, excessDays: number):
     oneInTenPayout: pct(pay, 0.9),
     maxedOutShare: r2(rows.filter((r) => r.paid === p.capDays).length / (rows.length || 1)),
     aheadShare: r2(pay.filter((x) => x > monthlyPremium).length / (pay.length || 1)),
-    breakdown: { expected: r2(expected), uncertainty: r2(uncertainty), risk: r2(risk), expenses: r2(expenses) },
+    breakdown: { expected: r2(expected), uncertainty: r2(uncertainty), risk: r2(risk), expenses: r2(expenses), loading: r2(base * (loading - 1)) },
     monthlyPremium,
   };
 }
 
 // Smallest excess that makes the cover fair value. Weather that's normal every month isn't insurable,
 // so if a trigger fires most months, the first few days become the roofer's own, like an insurance excess.
-export function price(days: DayResult[], p: Plan): Quote | null {
+export function price(days: DayResult[], p: Plan, loading = 1): Quote | null {
   const ceiling = LOADS.maxPremiumShare * p.capDays * p.payout;
   for (let excess = 0; excess <= LOADS.maxExcess; excess++) {
-    const q = quoteWithExcess(days, p, excess);
+    const q = quoteWithExcess(days, p, excess, loading);
     if (q.monthlyPremium <= ceiling) return q;
   }
   return null;
