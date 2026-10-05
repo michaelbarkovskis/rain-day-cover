@@ -11,10 +11,12 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test lib/*.test.ts",
     "rain": "node scripts/rain-analysis.ts",
-    "webhook:register": "node --env-file=.env.local scripts/register-webhook.ts"
+    "webhook:register": "node --env-file=.env.local scripts/register-webhook.ts",
+    "eval": "node --env-file=.env.local scripts/eval-policy-builder.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "next": "16.3.8",
     "react": "19.2.8",

@@ -17,8 +17,17 @@ async function hourly(url: string): Promise<Hour[]> {
 
 const q = (lat: number, lng: number) => `latitude=${lat}&longitude=${lng}&hourly=precipitation&timezone=Europe%2FLondon`;
 
-export const history = (lat: number, lng: number, from: string, to: string) =>
-  hourly(`https://archive-api.open-meteo.com/v1/archive?${q(lat, lng)}&start_date=${from}&end_date=${to}`);
+// ponytail: per-instance memory cache; move to a DB table if cold starts make quotes slow.
+const cache = new Map<string, Promise<Hour[]>>();
+export function history(lat: number, lng: number, from: string, to: string) {
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)},${from},${to}`;
+  if (!cache.has(key)) {
+    const p = hourly(`https://archive-api.open-meteo.com/v1/archive?${q(lat, lng)}&start_date=${from}&end_date=${to}`);
+    p.catch(() => cache.delete(key));
+    cache.set(key, p);
+  }
+  return cache.get(key)!;
+}
 
 export const forecast = (lat: number, lng: number, days = 2) =>
   hourly(`https://api.open-meteo.com/v1/forecast?${q(lat, lng)}&forecast_days=${days}`);
