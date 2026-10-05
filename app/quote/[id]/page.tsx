@@ -42,13 +42,18 @@ export default async function QuotePage({ params }: PageProps<"/quote/[id]">) {
       <section className="card space-y-4">
         <h2 className="font-semibold">Why this price</h2>
         <p className="leading-relaxed">{q.explanation}</p>
+        {q.gauge && (
+          <p className="text-sm text-muted">
+            Priced on measured rain at the Environment Agency&rsquo;s <span className="font-medium text-foreground">{q.gauge.label}</span> gauge, {q.gauge.km}km away: {q.gauge.months} complete months of 15-minute readings, {q.gauge.years}.
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-3 text-center">
           <Stat value={q.avgQualifyingDays} label="rained-off days a month" />
           <Stat value={`£${avgPaid}`} label="paid out a month on average" />
           <Stat value={`${Math.round(q.maxedOutShare * 100)}%`} label="of months hit the cap" />
         </div>
         <figure>
-          <figcaption className="mb-2 text-sm text-muted">Average paid days by month, last 10 years</figcaption>
+          <figcaption className="mb-2 text-sm text-muted">Average paid days by month, {q.gauge ? q.gauge.years : "last 10 years"}</figcaption>
           <div className="flex h-24 items-end gap-1" role="img" aria-label={q.paidDaysByMonth.map((d: number, i: number) => `${MONTHS[i]} ${d}`).join(", ")}>
             {q.paidDaysByMonth.map((d: number, i: number) => (
               <div key={i} className="flex flex-1 flex-col items-center gap-1">

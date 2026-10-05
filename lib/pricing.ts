@@ -37,4 +37,3 @@ export function quote(days: DayResult[], p: Plan): Quote {
 
 // Working defaults until roofer research says otherwise (see AGENTS.md "Decisions so far").
 export const DEFAULT_PLAN: Plan = { payout: 60, capDays: 4, excessDays: 0, margin: 0.3 };
-export const HISTORY = { from: "2016-01-01", to: "2025-12-31", years: 10 };

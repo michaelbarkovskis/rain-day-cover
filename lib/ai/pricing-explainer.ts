@@ -7,14 +7,15 @@ Write 3 or 4 short sentences of plain English. No markdown, no bullet points, no
 Use only the numbers you are given, each with its own meaning. Never invent, combine or recalculate figures.
 The average paid out is an average across all months; the most they can get in one month is max_paid_out_in_a_month_gbp.
 Cover: how often this cover would have paid out in their area, what they pay and what they get, and that payouts are capped at the monthly maximum every month to keep the price down.
-End with one honest sentence: the rain data covers their local area, not their exact roof, so a borderline day gets a closer look.`;
+Say the price comes from measured rain at their nearest official rain gauge, naming it and its distance.\nEnd with one honest sentence: the gauge isn't on their roof, so a borderline day gets a closer look.`;
 
-export async function explainQuote(input: { district: string; summary: string; quote: Quote; plan: Plan; years: number }) {
+export async function explainQuote(input: { district: string; summary: string; quote: Quote; plan: Plan; gauge: { label: string; km: number; years: string; months: number } }) {
   const { quote: q, plan } = input;
   const facts = {
     area: input.district,
     what_counts_as_a_lost_day: input.summary,
-    history_years: input.years,
+    rain_gauge: `Environment Agency gauge at ${input.gauge.label}, ${input.gauge.km}km away`,
+    history: `${input.gauge.years}, ${input.gauge.months} complete months of 15-minute readings`,
     lost_days_per_month_on_average: q.avgQualifyingDays,
     paid_days_per_month_on_average: q.avgPaidDays,
     payout_per_day_gbp: plan.payout,

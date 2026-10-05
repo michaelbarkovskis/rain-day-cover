@@ -10,10 +10,11 @@
     "sandbox:check": "node --env-file=.env.local scripts/sandbox-check.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test lib/*.test.ts",
-    "rain": "node scripts/rain-analysis.ts",
+    "rain": "node --env-file=.env.local scripts/rain-analysis.ts",
     "webhook:register": "node --env-file=.env.local scripts/register-webhook.ts",
     "eval": "node --env-file=.env.local scripts/eval-policy-builder.ts",
-    "compare": "node scripts/compare-sources.ts"
+    "compare": "node --env-file=.env.local scripts/compare-sources.ts",
+    "gauges:warm": "node --env-file=.env.local scripts/warm-gauges.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

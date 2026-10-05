@@ -3,9 +3,10 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { admin, currentUser, userClient } from "@/lib/supabase";
-import { geocode, history } from "@/lib/weather";
+import { geocode } from "@/lib/weather";
+import { pricingHistory } from "@/lib/gauges";
 import { evaluateAll } from "@/lib/trigger";
-import { quote, DEFAULT_PLAN, HISTORY } from "@/lib/pricing";
+import { quote, DEFAULT_PLAN } from "@/lib/pricing";
 import { parseWork, toTrigger } from "@/lib/ai/policy-builder";
 import { explainQuote } from "@/lib/ai/pricing-explainer";
 import { FAST_MODEL, logDecision } from "@/lib/ai/shared";
@@ -70,16 +71,21 @@ export async function buildPolicy(_: FormState, form: FormData): Promise<FormSta
     endHour: Number(profile.work_end.slice(0, 2)),
     workDays: profile.work_days,
   });
-  const days = evaluateAll(await history(profile.lat, profile.lng, HISTORY.from, HISTORY.to), trigger);
-  const q = quote(days, DEFAULT_PLAN);
+  let rain;
+  try { rain = await pricingHistory(profile.lat, profile.lng); } catch (e) {
+    console.error(e);
+    return { error: "We don't have enough rain gauge history near you yet. We're starting in Surrey." };
+  }
+  const q = quote(evaluateAll(rain.hours, trigger), DEFAULT_PLAN);
   const place = await geocode(profile.postcode).catch(() => ({ district: profile.postcode }));
-  const explanation = await explainQuote({ district: place.district, summary: parsed.summary, quote: q, plan: DEFAULT_PLAN, years: HISTORY.years });
+  const gauge = { label: rain.gauge.label, km: rain.gauge.km, years: rain.years, months: rain.months };
+  const explanation = await explainQuote({ district: place.district, summary: parsed.summary, quote: q, plan: DEFAULT_PLAN, gauge });
 
   const { data: policy, error } = await admin().from("policies").insert({
     user_id: user.id, description, trigger_json: trigger,
     payout_amount: DEFAULT_PLAN.payout, max_days_per_month: DEFAULT_PLAN.capDays, excess_days: DEFAULT_PLAN.excessDays,
     monthly_premium: q.monthlyPremium, status: "draft",
-    quote_json: { ...q, district: place.district, summary: parsed.summary, assumptions: parsed.assumptions, explanation: explanation.text },
+    quote_json: { ...q, gauge, district: place.district, summary: parsed.summary, assumptions: parsed.assumptions, explanation: explanation.text },
   }).select("id").single();
   if (error || !policy) return { error: "Couldn't save your quote, please try again" };
 

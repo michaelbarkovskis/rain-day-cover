@@ -1,13 +1,14 @@
 // Which weather source matches the real rain gauge? Run: npm run compare -- "GU1 4UR" 2024
-import { geocode, nearestGauge, gaugeHistory } from "../lib/weather.ts";
+import { geocode } from "../lib/weather.ts";
+import { gaugesNear, gaugeHours } from "../lib/gauges.ts";
 import { evaluateAll, type Hour, type Trigger } from "../lib/trigger.ts";
 
 const postcode = process.argv[2] ?? "GU1 4UR", year = process.argv[3] ?? "2024";
 const from = `${year}-01-01`, to = `${year}-12-31`;
 const { lat, lng, district } = await geocode(postcode);
-const g = await nearestGauge(lat, lng);
-const gauge = await gaugeHistory(g.measure, from, to);
-console.log(`${postcode} (${district}) vs ${g.label} gauge, ${g.km}km away, ${year}. Missing 15-min readings: ${gauge.missing}\n`);
+const g = (await gaugesNear(lat, lng))[0];
+const gauge = { hours: (await gaugeHours(g)).hours.filter((h) => h.time.startsWith(year)) };
+console.log(`${postcode} (${district}) vs ${g.label} gauge, ${g.km}km away, ${year} (complete months only)\n`);
 
 const q = `latitude=${lat}&longitude=${lng}&hourly=precipitation&timezone=Europe%2FLondon&start_date=${from}&end_date=${to}`;
 const MODELS: Record<string, string> = {
