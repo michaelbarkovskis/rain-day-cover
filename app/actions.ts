@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { createSubscription } from "@/lib/paypal";
 import { z } from "zod";
 import { admin, currentUser, userClient } from "@/lib/supabase";
 import { geocode } from "@/lib/weather";
@@ -105,4 +107,17 @@ export async function buildPolicy(_: FormState, form: FormData): Promise<FormSta
 export async function getPolicy(id: string) {
   const { data } = await (await userClient()).from("policies").select("*").eq("id", id).maybeSingle();
   return data;
+}
+
+// Starts a PayPal subscription at this policy's quoted price, then hands the roofer to PayPal to approve.
+export async function subscribe(policyId: string) {
+  const policy = await getPolicy(policyId); // RLS: only the owner gets a row
+  if (!policy) redirect("/start");
+  if (policy.status !== "draft" && policy.status !== "pending") redirect(`/policy/${policyId}`);
+  const origin = (await headers()).get("origin");
+  if (!origin) throw new Error("Missing origin header");
+  const sub = await createSubscription(process.env.PAYPAL_PLAN_ID!, Number(policy.monthly_premium), `${origin}/policy/${policyId}`, `${origin}/quote/${policyId}?cancelled=1`, policyId);
+  const { error } = await admin().from("policies").update({ paypal_subscription_id: sub.id, status: "pending" }).eq("id", policyId);
+  if (error) throw new Error(`Couldn't save subscription: ${error.message}`);
+  redirect(sub.approveUrl);
 }

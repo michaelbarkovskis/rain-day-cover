@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPolicy } from "../../actions";
+import { getPolicy, subscribe } from "../../actions";
+import { SubmitButton } from "../../submit-button";
 import type { Trigger } from "@/lib/trigger";
 
 const MONTHS = "JFMAMJJASOND".split("");
@@ -8,8 +9,9 @@ const DAY = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const WET = { 0.2: "any rain or drizzle", 0.5: "steady rain", 1: "heavy rain" } as Record<number, string>;
 const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
 
-export default async function QuotePage({ params }: PageProps<"/quote/[id]">) {
+export default async function QuotePage({ params, searchParams }: PageProps<"/quote/[id]">) {
   const { id } = await params;
+  const { cancelled } = await searchParams;
   const policy = await getPolicy(id);
   if (!policy) notFound();
   const t = policy.trigger_json as Trigger;
@@ -93,7 +95,15 @@ export default async function QuotePage({ params }: PageProps<"/quote/[id]">) {
       )}
 
       <div className="space-y-2">
-        <button className="btn" disabled>Subscribe with PayPal (coming next)</button>
+        {cancelled && <p role="alert" className="text-sm text-danger">You didn&rsquo;t finish subscribing on PayPal. Your quote is still here.</p>}
+        {policy.status === "draft" || policy.status === "pending" ? (
+          <form action={subscribe.bind(null, policy.id)}>
+            <SubmitButton pending="Opening PayPal…">Subscribe with PayPal · £{Number(policy.monthly_premium).toFixed(2)}/month</SubmitButton>
+          </form>
+        ) : (
+          <Link href={`/policy/${policy.id}`} className="btn">View your cover</Link>
+        )}
+        <p className="text-xs text-muted">Cancel any time in PayPal. Cover starts 7 days after you subscribe.</p>
         <p className="text-sm"><Link href="/describe" className="text-accent underline">Not quite right? Describe it again</Link></p>
       </div>
     </div>

@@ -57,9 +57,11 @@ export async function createPlan(name: string, monthlyGBP: number): Promise<stri
 }
 
 // Per-user price: plan has a fixed price; override it on the subscription.
-export async function createSubscription(planId: string, monthlyGBP: number, returnUrl: string, cancelUrl: string) {
+// customId = our policy id, echoed back on every subscription webhook.
+export async function createSubscription(planId: string, monthlyGBP: number, returnUrl: string, cancelUrl: string, customId?: string) {
   const sub = await call("POST", "/v1/billing/subscriptions", {
     plan_id: planId,
+    custom_id: customId,
     plan: { billing_cycles: [{ sequence: 1, pricing_scheme: { fixed_price: money(monthlyGBP) } }] },
     application_context: { brand_name: "Rain-Day Cover", user_action: "SUBSCRIBE_NOW", return_url: returnUrl, cancel_url: cancelUrl },
   });

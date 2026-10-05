@@ -19,7 +19,7 @@ const londonParts = (d: Date) => Object.fromEntries(
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
     .formatToParts(d).map((p) => [p.type, p.value]),
 );
-const londonDate = (d: Date) => { const p = londonParts(d); return `${p.year}-${p.month}-${p.day}`; };
+export const londonDate = (d: Date) => { const p = londonParts(d); return `${p.year}-${p.month}-${p.day}`; };
 
 // Working days whose window has finished and that aren't checked yet.
 export async function dueDates(policy: PolicyForCheck, now = new Date()) {
