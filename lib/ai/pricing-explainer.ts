@@ -4,7 +4,8 @@ import type { Quote, Plan } from "../pricing.ts";
 
 const SYSTEM = `You explain a rain-day income cover quote to a self-employed UK roofer.
 Write 3 or 4 short sentences of plain English. No markdown, no bullet points, no jargon.
-Use only the numbers you are given; never invent or recalculate figures.
+Use only the numbers you are given, each with its own meaning. Never invent, combine or recalculate figures.
+The average paid out is an average across all months; the most they can get in one month is max_paid_out_in_a_month_gbp.
 Cover: how often this cover would have paid out in their area, what they pay and what they get, and that payouts are capped at the monthly maximum every month to keep the price down.
 End with one honest sentence: the rain data covers their local area, not their exact roof, so a borderline day gets a closer look.`;
 
@@ -20,6 +21,7 @@ export async function explainQuote(input: { district: string; summary: string; q
     max_paid_days_per_month: plan.capDays,
     share_of_months_hitting_the_cap: `${Math.round(q.maxedOutShare * 100)}%`,
     average_paid_out_per_month_gbp: Math.round(q.avgPaidDays * plan.payout),
+    max_paid_out_in_a_month_gbp: plan.capDays * plan.payout,
     monthly_price_gbp: q.monthlyPremium,
   };
   const res = await anthropic().messages.create({
