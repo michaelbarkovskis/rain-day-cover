@@ -72,11 +72,12 @@ export async function createSubscription(planId: string, monthlyGBP: number, ret
 export const getSubscription = (id: string) => call("GET", `/v1/billing/subscriptions/${id}`);
 
 // idempotencyKey = `${policyId}:${date}`. PayPal rejects a repeated sender_batch_id, so a retry can't double-pay.
-export async function sendPayout(receiverEmail: string, amountGBP: number, idempotencyKey: string, note: string) {
+// itemId (what payout webhooks echo back) defaults to the same key; demo re-runs pass a fresh batch key, same itemId.
+export async function sendPayout(receiverEmail: string, amountGBP: number, idempotencyKey: string, note: string, itemId = idempotencyKey) {
   if (!(amountGBP > 0 && amountGBP <= MAX_PAYOUT_GBP)) throw new Error(`Payout £${amountGBP} outside hard limit`);
   const batch = await call("POST", "/v1/payments/payouts", {
     sender_batch_header: { sender_batch_id: idempotencyKey, email_subject: "Your rain-day payout", email_message: note },
-    items: [{ recipient_type: "EMAIL", receiver: receiverEmail, amount: { value: amountGBP.toFixed(2), currency: CURRENCY }, note, sender_item_id: idempotencyKey }],
+    items: [{ recipient_type: "EMAIL", receiver: receiverEmail, amount: { value: amountGBP.toFixed(2), currency: CURRENCY }, note, sender_item_id: itemId }],
   }, idempotencyKey);
   return batch.batch_header.payout_batch_id as string;
 }

@@ -22,7 +22,7 @@ export type Outcome = { status: "sent" | "declined" | "failed" | "pending"; reas
 const sameMonth = (date: string) => [`${date.slice(0, 7)}-01`, date] as const;
 
 // Locks the day (one claim per policy per date), applies excess and cap, then pays.
-export async function settleRainedOffDay(p: ClaimPolicy, date: string, decidedBy: "code" | "ai"): Promise<Outcome> {
+export async function settleRainedOffDay(p: ClaimPolicy, date: string, decidedBy: "code" | "ai", simulated = false): Promise<Outcome> {
   const db = admin();
   const [from] = sameMonth(date);
   const { data: month } = await db.from("claims").select("date, qualifying, decision, status")
@@ -46,7 +46,9 @@ export async function settleRainedOffDay(p: ClaimPolicy, date: string, decidedBy
   if (!pay) return { status: "declined", reason, amount: 0, ...counts };
 
   try {
-    const batch = await sendPayout(p.profiles.paypal_email, amount, `${p.id}:${date}`, `Rain-Day Cover: rained off on ${date}`);
+    // Demo days can be reset and re-run, so they need a fresh batch id; the item id still maps webhooks to this day.
+    const key = `${p.id}:${date}`;
+    const batch = await sendPayout(p.profiles.paypal_email, amount, simulated ? `${key}:sim${Date.now()}` : key, `Rain-Day Cover: rained off on ${date}`, key);
     await db.from("claims").update({ status: "sent", paypal_payout_id: batch }).eq("id", claim.id);
     return { status: "sent", reason, amount, paypalBatchId: batch, ...counts };
   } catch (e) {
@@ -61,22 +63,23 @@ async function decline(p: ClaimPolicy, date: string, reason: string, decidedBy: 
   return { status: "declined", reason, amount: 0 } satisfies Outcome;
 }
 
-export async function processCheck(p: ClaimPolicy, check: DayCheck) {
+export async function processCheck(p: ClaimPolicy, check: DayCheck, opts: { demoSkipWaiting?: boolean } = {}) {
   if (!check.trigger_met && !check.borderline) return null; // a workable day: nothing to claim
   const { data: existing } = await admin().from("claims").select("id").eq("policy_id", p.id).eq("date", check.date).maybeSingle();
   if (existing) return null;
 
-  const blocked = p.status !== "active" ? "not_active" : p.cover_starts_on && check.date < p.cover_starts_on ? "waiting_period" : null;
+  const waiting = p.cover_starts_on && check.date < p.cover_starts_on && !(check.simulated && opts.demoSkipWaiting); // skip only ever applies to demo days
+  const blocked = p.status !== "active" ? "not_active" : waiting ? "waiting_period" : null;
   let outcome: Outcome, explanation: string, decidedBy: "code" | "ai" = "code";
   if (blocked) {
     outcome = await decline(p, check.date, blocked, "code");
   } else if (!check.borderline) {
-    outcome = await settleRainedOffDay(p, check.date, "code"); // clear trigger: a parametric promise, the AI can't block it
+    outcome = await settleRainedOffDay(p, check.date, "code", check.simulated); // clear trigger: a parametric promise, the AI can't block it
   } else {
     decidedBy = "ai";
     const evidence = await gatherEvidence(p, check);
     const judged = await judgeBorderline(p, check, evidence, {
-      pay: () => settleRainedOffDay(p, check.date, "ai"),
+      pay: () => settleRainedOffDay(p, check.date, "ai", check.simulated),
       decline: () => decline(p, check.date, "not_rained_off", "ai"),
     });
     if (judged.outcome) { outcome = judged.outcome; explanation = judged.explanation; }
@@ -104,10 +107,10 @@ async function gatherEvidence(p: ClaimPolicy, check: DayCheck) {
 }
 
 // Loads the stored check for a day and settles it. Used by the daily cron and the demo simulator.
-export async function processDay(p: ClaimPolicy, date: string) {
+export async function processDay(p: ClaimPolicy, date: string, opts: { demoSkipWaiting?: boolean } = {}) {
   const { data } = await admin().from("weather_checks").select("date, trigger_met, borderline, simulated, raw_data_json")
     .eq("policy_id", p.id).eq("date", date).maybeSingle();
-  return data ? processCheck(p, data as DayCheck) : null;
+  return data ? processCheck(p, data as DayCheck, opts) : null;
 }
 
 export const CLAIM_POLICY_COLUMNS = "id, created_at, status, cover_starts_on, payout_amount, max_days_per_month, excess_days, trigger_json, quote_json, profiles(lat, lng, paypal_email)";

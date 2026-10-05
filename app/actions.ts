@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createSubscription } from "@/lib/paypal";
+import { checkPolicyDay, type PolicyForCheck } from "@/lib/checks";
+import { processDay, CLAIM_POLICY_COLUMNS, type ClaimPolicy } from "@/lib/claims";
+import { simulatedHours } from "@/lib/simulate";
 import { z } from "zod";
 import { admin, currentUser, userClient } from "@/lib/supabase";
 import { geocode } from "@/lib/weather";
@@ -120,4 +123,53 @@ export async function subscribe(policyId: string) {
   const { error } = await admin().from("policies").update({ paypal_subscription_id: sub.id, status: "pending" }).eq("id", policyId);
   if (error) throw new Error(`Couldn't save subscription: ${error.message}`);
   redirect(sub.approveUrl);
+}
+
+// ---- Demo controls: inject rain readings through the real check → rules → judge → PayPal payout path ----
+const Simulation = z.object({
+  date: z.iso.date("Pick a date"),
+  pattern: z.enum(["washout", "rainedOff", "borderline", "dry"]),
+  skipWaiting: z.literal("on").optional(),
+});
+
+async function ownedActivePolicy(policyId: string) {
+  const owned = await getPolicy(policyId); // RLS: only the owner gets a row
+  if (!owned) return null;
+  const { data } = await admin().from("policies").select(CLAIM_POLICY_COLUMNS).eq("id", policyId).single();
+  return data as unknown as ClaimPolicy & PolicyForCheck;
+}
+
+export async function simulateDay(policyId: string, _: FormState, form: FormData): Promise<FormState> {
+  const parsed = Simulation.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { date, pattern, skipWaiting } = parsed.data;
+  const p = await ownedActivePolicy(policyId);
+  if (!p) redirect("/start");
+  if (p.status !== "active") return { error: "Subscribe first: only active cover can be simulated." };
+
+  const db = admin();
+  const [{ data: check }, { data: claim }] = await Promise.all([
+    db.from("weather_checks").select("simulated").eq("policy_id", policyId).eq("date", date).maybeSingle(),
+    db.from("claims").select("id").eq("policy_id", policyId).eq("date", date).maybeSingle(),
+  ]);
+  if (check && !check.simulated) return { error: "That day already has real gauge readings. Pick another day." };
+  if (claim) return { error: "That day is already settled. Reset demo days first, or pick another day." };
+
+  const result = await checkPolicyDay(p, date, simulatedHours(p.trigger_json, date, pattern));
+  if (!result) return { error: "That isn't one of your working days." };
+  await processDay(p, date, { demoSkipWaiting: !!skipWaiting });
+  redirect(`/policy/${policyId}`);
+}
+
+export async function resetDemoDays(policyId: string) {
+  const p = await ownedActivePolicy(policyId);
+  if (!p) redirect("/start");
+  const db = admin();
+  const { data: sims } = await db.from("weather_checks").select("date").eq("policy_id", policyId).eq("simulated", true);
+  const dates = (sims ?? []).map((s) => s.date);
+  if (dates.length) {
+    await db.from("claims").delete().eq("policy_id", policyId).in("date", dates); // money already sent stays in the ledger
+    await db.from("weather_checks").delete().eq("policy_id", policyId).eq("simulated", true);
+  }
+  redirect(`/policy/${policyId}`);
 }

@@ -44,3 +44,15 @@ test("auto-excess only kicks in when cover would be poor value", () => {
   const drizzly = price(history(Array(24).fill(0).map((_, i) => 4 + (i % 3))), plan)!; // 4–6 days every month
   assert.ok(drizzly.excessDays > 0 && drizzly.monthlyPremium <= ceiling);
 });
+
+test("simulated patterns land where the demo says they do", async () => {
+  const { simulatedHours } = await import("./simulate.ts");
+  const d = "2026-10-06"; // a Tuesday
+  const run = (p: "washout" | "rainedOff" | "borderline" | "dry") => evaluateDay(d, simulatedHours(t, d, p), t)!;
+  assert.equal(run("washout").met, true);
+  assert.equal(run("rainedOff").met, true);
+  assert.equal(run("rainedOff").borderline, false); // clear-cut: code pays, no judge
+  assert.equal(run("borderline").met, false);
+  assert.equal(run("borderline").borderline, true);
+  assert.equal(run("dry").met, false);
+});

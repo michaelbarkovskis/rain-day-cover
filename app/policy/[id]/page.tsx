@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPolicy } from "../../actions";
+import { getPolicy, simulateDay, resetDemoDays } from "../../actions";
+import { ActionForm } from "../../action-form";
+import { SubmitButton } from "../../submit-button";
+import { PATTERNS } from "@/lib/simulate";
+import { londonDate } from "@/lib/checks";
 import { userClient } from "@/lib/supabase";
 import { activateFromPayPal } from "@/lib/policies";
 import type { Trigger } from "@/lib/trigger";
@@ -92,6 +96,37 @@ export default async function PolicyPage({ params, searchParams }: PageProps<"/p
       </section>
 
       <p className="text-sm"><Link href={`/quote/${id}`} className="text-accent underline">See how your price was worked out</Link></p>
+
+      {policy.status === "active" && (
+        <section className="card space-y-4 border-dashed">
+          <div>
+            <h2 className="font-semibold">Demo controls <span className="text-xs font-normal text-muted">(prototype only)</span></h2>
+            <p className="text-sm text-muted">Inject rain readings for a day. They go through the real checking, rules, claims assistant and PayPal payout, and are tagged &ldquo;simulated&rdquo;.</p>
+          </div>
+          <ActionForm action={simulateDay.bind(null, id)} submit="Simulate this day" pending="Rain falling… checking your gauge, judging the day, paying…">
+            <div>
+              <label className="label" htmlFor="sim-date">Day</label>
+              <input className="field" id="sim-date" name="date" type="date" defaultValue={londonDate(new Date())} required />
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="label">Rain</legend>
+              {Object.entries(PATTERNS).map(([key, text], i) => (
+                <label key={key} className="flex items-center gap-2 text-sm">
+                  <input type="radio" name="pattern" value={key} defaultChecked={i === 1} className="accent-[var(--accent)]" /> {text}
+                </label>
+              ))}
+            </fieldset>
+            {policy.cover_starts_on && policy.cover_starts_on > londonDate(new Date()) && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="skipWaiting" defaultChecked className="accent-[var(--accent)]" /> Skip the 7-day waiting period for this demo day
+              </label>
+            )}
+          </ActionForm>
+          <form action={resetDemoDays.bind(null, id)}>
+            <SubmitButton pending="Clearing…">Reset demo days</SubmitButton>
+          </form>
+        </section>
+      )}
     </div>
   );
 }
