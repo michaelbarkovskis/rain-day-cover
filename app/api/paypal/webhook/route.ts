@@ -1,5 +1,5 @@
 import { verifyWebhook } from "@/lib/paypal";
-import { activateFromPayPal, recordPremium, setStatusBySubscription } from "@/lib/policies";
+import { activateFromPayPal, recordPremium, setStatusBySubscription, settlePayoutItem } from "@/lib/policies";
 
 // PayPal retries anything that isn't 2xx, so handlers must be idempotent (they are: see lib/policies.ts).
 export async function POST(req: Request) {
@@ -19,6 +19,11 @@ export async function POST(req: Request) {
       break;
     case "PAYMENT.SALE.COMPLETED": // a monthly premium landed in the pool
       if (r.billing_agreement_id) await recordPremium(r.billing_agreement_id, r.id, Number(r.amount?.total));
+      break;
+    case "PAYMENT.PAYOUTS-ITEM.SUCCEEDED": // a claim payout landed in the roofer's PayPal
+    case "PAYMENT.PAYOUTS-ITEM.FAILED":
+    case "PAYMENT.PAYOUTS-ITEM.UNCLAIMED":
+      if (r.payout_item?.sender_item_id) await settlePayoutItem(r.payout_item.sender_item_id, r.payout_item_id, Number(r.payout_item.amount?.value), event.event_type.endsWith("SUCCEEDED"));
       break;
   }
   console.log("paypal webhook", event.event_type, r.payout_item_id ?? r.id);

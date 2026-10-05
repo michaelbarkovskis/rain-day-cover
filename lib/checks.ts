@@ -2,6 +2,7 @@
 import { admin } from "./db.ts";
 import { dayRain, type DayRain, type LiveGauge } from "./live.ts";
 import { evaluateDay, isoWeekday, type Hour, type Trigger } from "./trigger.ts";
+import { processDay, CLAIM_POLICY_COLUMNS, type ClaimPolicy } from "./claims.ts";
 
 const READY_AFTER_MIN = 45; // gauge readings lag; wait this long after the work window ends
 const CATCH_UP_DAYS = 3;    // re-check recent days a missed cron run skipped
@@ -52,13 +53,16 @@ export async function checkPolicyDay(policy: PolicyForCheck, date: string, simul
 }
 
 export async function runDailyChecks(now = new Date()) {
-  const { data: policies, error } = await admin().from("policies")
-    .select("id, created_at, cover_starts_on, trigger_json, quote_json, profiles(lat, lng)").eq("status", "active");
+  const { data: policies, error } = await admin().from("policies").select(CLAIM_POLICY_COLUMNS).eq("status", "active");
   if (error) throw new Error(error.message);
   const results = [];
-  for (const p of (policies ?? []) as unknown as PolicyForCheck[]) {
+  for (const p of (policies ?? []) as unknown as (PolicyForCheck & ClaimPolicy)[]) {
     for (const date of await dueDates(p, now)) {
-      try { results.push({ policy: p.id, ...(await checkPolicyDay(p, date)) }); }
+      try {
+        const check = await checkPolicyDay(p, date);
+        const claim = check ? await processDay(p, date) : null;
+        results.push({ policy: p.id, ...check, claim });
+      }
       catch (e) { results.push({ policy: p.id, date, error: (e as Error).message }); } // one bad policy mustn't stop the rest
     }
   }

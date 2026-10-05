@@ -35,3 +35,12 @@ export async function recordPremium(subscriptionId: string, saleId: string, amou
   );
   if (error) throw new Error(`ledger: ${error.message}`);
 }
+
+// Payout webhooks: sender_item_id is "<policyId>:<date>", set when the claim paid out.
+export async function settlePayoutItem(senderItemId: string, payoutItemId: string, amount: number, ok: boolean) {
+  const [policyId, date] = senderItemId.split(":");
+  if (!/^[0-9a-f-]{36}$/.test(policyId) || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) return; // e.g. our sandbox test payouts
+  const db = admin();
+  await db.from("claims").update({ status: ok ? "paid" : "failed" }).eq("policy_id", policyId).eq("date", date);
+  if (ok) await db.from("ledger").upsert({ kind: "payout", policy_id: policyId, amount, paypal_id: payoutItemId }, { onConflict: "paypal_id", ignoreDuplicates: true });
+}
