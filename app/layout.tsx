@@ -20,7 +20,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="font-semibold tracking-tight">☔ Rain-Day Cover</Link>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 has-[.wide]:max-w-6xl">{children}</main>
         <footer className="px-4 py-6 text-center text-xs text-muted">
           Prototype for the PayPal AI Hackathon. PayPal sandbox only, no real money. Not a regulated insurance product.
         </footer>
