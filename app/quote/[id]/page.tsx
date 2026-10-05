@@ -14,14 +14,18 @@ export default async function QuotePage({ params }: PageProps<"/quote/[id]">) {
   if (!policy) notFound();
   const t = policy.trigger_json as Trigger;
   const q = policy.quote_json;
-  const avgPaid = Math.round(q.avgPaidDays * policy.payout_amount);
+  const avgPaid = Math.round(q.expectedPayout ?? q.avgPaidDays * policy.payout_amount);
+  const excess = policy.excess_days ?? 0;
+  const ordinal = (n: number) => ["1st", "2nd", "3rd"][n - 1] ?? `${n}th`; // n ≤ LOADS.maxExcess + 1
 
   return (
     <div className="space-y-6">
       <div>
         <p className="text-sm font-medium text-accent">Your quote · {q.district}</p>
         <h1 className="text-2xl font-bold tracking-tight">£{Number(policy.monthly_premium).toFixed(2)} a month</h1>
-        <p className="text-muted">£{policy.payout_amount} paid to your PayPal for each rained-off day, up to {policy.max_days_per_month} days a month.</p>
+        <p className="text-muted">
+          £{policy.payout_amount} paid to your PayPal for each rained-off day{excess > 0 && <> from your <span className="font-medium text-foreground">{ordinal(excess + 1)} each month</span></>}, up to {policy.max_days_per_month} paid days a month.
+        </p>
       </div>
 
       <section className="card space-y-3">
@@ -49,8 +53,12 @@ export default async function QuotePage({ params }: PageProps<"/quote/[id]">) {
         )}
         <div className="grid grid-cols-3 gap-3 text-center">
           <Stat value={q.avgQualifyingDays} label="rained-off days a month" />
-          <Stat value={`£${avgPaid}`} label="paid out a month on average" />
-          <Stat value={`${Math.round(q.maxedOutShare * 100)}%`} label="of months hit the cap" />
+          {q.oneInTenPayout != null
+            ? <Stat value={`£${q.oneInTenPayout}`} label="paid in a 1-in-10 wet month" />
+            : <Stat value={`£${avgPaid}`} label="paid out a month on average" />}
+          {q.aheadShare != null
+            ? <Stat value={`${Math.round(q.aheadShare * 100)}%`} label="of months it paid more than it cost" />
+            : <Stat value={`${Math.round(q.maxedOutShare * 100)}%`} label="of months hit the cap" />}
         </div>
         <figure>
           <figcaption className="mb-2 text-sm text-muted">Average paid days by month, {q.gauge ? q.gauge.years : "last 10 years"}</figcaption>
@@ -65,10 +73,37 @@ export default async function QuotePage({ params }: PageProps<"/quote/[id]">) {
         </figure>
       </section>
 
+      {q.breakdown && (
+        <section className="card space-y-3">
+          <h2 className="font-semibold">How your price is built</h2>
+          <dl className="space-y-2 text-sm">
+            <Line label="Expected payouts" note={`what this cover paid on average, ${q.gauge?.years ?? ""}`} value={q.breakdown.expected} />
+            <Line label="History buffer" note={`${q.months} months of records can't show every possible year`} value={q.breakdown.uncertainty} />
+            <Line label="Wet-run buffer" note="so the pool can pay everyone in a run of wet months" value={q.breakdown.risk} />
+            <Line label="Running costs" note="payments, data and support" value={q.breakdown.expenses} />
+            <div className="flex justify-between border-t border-border pt-2 font-semibold"><dt>Your monthly price</dt><dd>£{Number(policy.monthly_premium).toFixed(2)}</dd></div>
+          </dl>
+          {excess > 0 && (
+            <p className="rounded-lg bg-background p-3 text-sm text-muted">
+              Why the first {excess} {excess === 1 ? "day isn’t" : "days aren’t"} covered: in a typical month here, rain like yours stops work {q.typicalQualifyingDays} days. Covering days you can count on would cost nearly as much as it pays, so this cover is for the months that are wetter than normal.
+            </p>
+          )}
+        </section>
+      )}
+
       <div className="space-y-2">
         <button className="btn" disabled>Subscribe with PayPal (coming next)</button>
         <p className="text-sm"><Link href="/describe" className="text-accent underline">Not quite right? Describe it again</Link></p>
       </div>
+    </div>
+  );
+}
+
+function Line({ label, note, value }: { label: string; note: string; value: number }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt><span className="font-medium">{label}</span> <span className="text-muted">· {note}</span></dt>
+      <dd className="shrink-0 tabular-nums">£{value.toFixed(2)}</dd>
     </div>
   );
 }

@@ -75,9 +75,10 @@ ANTHROPIC_API_KEY= CRON_SECRET=
 ## Decisions so far
 
 - **Pilot market: Surrey roofers.** Engine prices any UK postcode (demo: Manchester costs ~55% more).
-- **Flat monthly price** from 10 years of Open-Meteo history. Don't price per calendar month (too noisy, and risk is fairly flat year-round).
-- **No excess days.** With 1–3 qualifying days/month an excess wipes out most payouts.
-- **Trigger is set by user research.** Price is very sensitive to it: >=3h of >=0.5mm/h ≈ £113/mo, >=2h of drizzle ≈ £299/mo (pays nearly every month). Working default: >=3h of >=0.5mm, £60/day, cap 4.
+- **Price on measured rain:** nearest Environment Agency gauge with 10+ clean years of 2010–2024 (`lib/gauges.ts`). ERA5 overcounted rained-off days 1.5–2x against gauges.
+- **Pricing model** (`lib/pricing.ts`): expected payout + 1 standard error (finite history) + 15% of monthly swing (wet runs) + 15% costs. Flat monthly price.
+- **Automatic excess:** smallest number of uncovered days per month that keeps price <= 50% of a maximum month. Zero for steady/heavy rain triggers; ~3 days for drizzle-sensitive roofers. We insure abnormal months, not normal weather.
+- **Trigger is set by the roofer's words** (policy builder, Sonnet 5.5, chosen by eval). Guildford examples: steady rain 3h ≈ £90/mo; any rain 2h ≈ £113/mo with 3-day excess.
 - **No model training.** Prompts + structured output + few-shot examples + a small eval set (`evals/`).
 - Personal accounts only for GitHub, Vercel, Supabase. Never the work accounts on this machine.
 
