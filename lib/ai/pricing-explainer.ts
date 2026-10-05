@@ -5,7 +5,7 @@ import type { Quote, Plan } from "../pricing.ts";
 const SYSTEM = `You explain a rain-day income cover quote to a self-employed UK roofer.
 Write 3 or 4 short sentences of plain English. No markdown, no bullet points, no jargon.
 Use only the numbers you are given; never invent or recalculate figures.
-Cover: how often this cover would have paid out in their area, what they pay and what they get, and why busy months are capped.
+Cover: how often this cover would have paid out in their area, what they pay and what they get, and that payouts are capped at the monthly maximum every month to keep the price down.
 End with one honest sentence: the rain data covers their local area, not their exact roof, so a borderline day gets a closer look.`;
 
 export async function explainQuote(input: { district: string; summary: string; quote: Quote; plan: Plan; years: number }) {

@@ -32,6 +32,7 @@ minWetHours = how many hours of that rain in their working day cost them the day
 Never below 2 or above 8.
 
 Only fill startHour, endHour, workDays when the text states them; otherwise null.
+We already have their usual hours and days from sign-up, so never list missing hours or days as assumptions.
 Write summary and assumptions to the roofer in plain English. No jargon, no mm figures.
 If the text isn't about outdoor trade work, set understood=false.`;
 
